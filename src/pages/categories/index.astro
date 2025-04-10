@@ -1,0 +1,31 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { CATEGORIES, SITE_TITLE } from '../../consts';
+import '../../styles/global.css';
+---
+
+<BaseLayout title={`Categories | ${SITE_TITLE}`} description="Browse all content categories">
+  <section class="max-w-6xl mx-auto px-4 py-12">
+    <h1 class="text-4xl md:text-5xl font-bold text-earth-900 mb-6">Categories</h1>
+    <p class="text-xl text-earth-700 mb-12">Explore our content by subject area. Each category provides a curated selection of articles, essays, and resources.</p>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {CATEGORIES.map(category => (
+        <a href={`/categories/${category.slug}`} class="card hover:transform hover:-translate-y-1">
+          <div class={`p-6 border-t-4 border-${category.color}`}>
+            <h2 class="text-2xl font-bold text-earth-900 mb-3">{category.name}</h2>
+            <p class="text-earth-700 mb-4">{category.description}</p>
+            <div class="flex justify-end">
+              <span class="inline-flex items-center text-olive-600 hover:text-olive-700">
+                Browse articles
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-1" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+              </span>
+            </div>
+          </div>
+        </a>
+      ))}
+    </div>
+  </section>
+</BaseLayout>
