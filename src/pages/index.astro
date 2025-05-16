@@ -9,10 +9,25 @@ import '../styles/global.css';
 const posts = (await getCollection('blog'))
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 
-// Get featured or latest posts
+// Get featured posts for the carousel (max 3)
 const featuredPosts = posts.filter(post => post.data.featured).slice(0, 3);
-const latestPosts = featuredPosts.length === 3 ? [] : posts.slice(0, 3 - featuredPosts.length);
-const highlightedPosts = [...featuredPosts, ...latestPosts];
+
+// Get latest posts for filling any remaining carousel slots
+const remainingCarouselPosts = featuredPosts.length === 3 
+  ? [] 
+  : posts.filter(post => !post.data.featured).slice(0, 3 - featuredPosts.length);
+
+// Combine for carousel display
+const carouselPosts = [...featuredPosts, ...remainingCarouselPosts];
+
+// For featured articles section:
+// If we have more than 3 posts, filter out carousel posts to avoid repetition
+// If we have 3 or fewer posts total, just use all posts to ensure content displays
+const featuredArticles = posts.length > 3
+  ? posts
+    .filter(post => !carouselPosts.some(carousel => carousel.id === post.id))
+    .slice(0, 3)
+  : posts.slice(0, 3);
 
 // Get courses
 let courses: any = [];
@@ -27,10 +42,11 @@ try {
 
 <BaseLayout title={SITE_TITLE} description={SITE_DESCRIPTION}>
   <!-- Hero Section -->
-  <section class="relative bg-earth-900 text-white overflow-hidden">
+  <section class="bg-earth-900 text-white overflow-hidden w-screen">
     <div class="absolute inset-0 opacity-20 bg-cover bg-center"></div>
-    <div class="relative max-w-6xl mx-auto px-4 py-20 md:py-28 lg:py-32">
-      <div class="max-w-3xl">
+    <div class="container mx-auto relative px-4 flex flex-col py-8 lg:flex-row gap-8 items-center">
+      <!-- Hero Content -->
+      <div class="lg:w-1/2">
         <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
           Exploring the Depths of Classical Wisdom
         </h1>
@@ -42,200 +58,216 @@ try {
           <a href="/courses" class="btn-secondary bg-earth-800 text-white hover:bg-earth-700">Explore Courses</a>
         </div>
       </div>
+
+      <!-- Hero Carousel -->
+      <div class="lg:w-1/2 mt-8 lg:mt-0">
+        <div class="hero-carousel relative">
+          <div class="overflow-hidden rounded-lg relative">
+            <div class="flex carousel-slides">
+              {carouselPosts.map((post, index) => (
+                <div class="carousel-slide min-w-full px-1 transition-transform duration-500" data-index={index}>
+                  <a href={`/blog/${post.id.split('/').pop()?.replace(/\.mdx?$/, '')}/`} 
+                     class="block bg-earth-800 bg-opacity-70 rounded-lg overflow-hidden hover:bg-earth-700 transition-colors">
+                    {post.data.heroImage && (
+                      <div class="aspect-video overflow-hidden">
+                        <img 
+                          src={post.data.heroImage} 
+                          alt={post.data.title} 
+                          class="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    <div class="p-4">
+                      <h3 class="text-lg font-bold text-white">{post.data.title}</h3>
+                      <div class="mt-2 flex justify-between items-center text-sm text-earth-200">
+                        <FormattedDate date={post.data.pubDate} />
+                        {post.data.category && (
+                          <span class="px-2 py-1 text-xs rounded-full bg-olive-700 text-white">
+                            {post.data.category}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </a>
+                </div>
+              ))}
+            </div>
+            
+            <!-- Carousel Navigation - now positioned over the images -->
+            <div class="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-10">
+              <div class="px-3 py-1.5 bg-earth-900 bg-opacity-60 rounded-full flex gap-2">
+                {carouselPosts.map((_, index) => (
+                  <button 
+                    class="w-3 h-3 rounded-full bg-earth-400 hover:bg-olive-500 focus:outline-none carousel-dot transition-colors" 
+                    data-index={index} 
+                    aria-label={`Go to slide ${index + 1}`}
+                  ></button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
   <!-- Featured Posts Section -->
-  <section class="py-16 bg-olive-50">
-    <div class="max-w-6xl mx-auto px-4">
-      <div class="flex justify-between items-end mb-8">
-        <div>
-          <h2 class="text-3xl font-bold text-earth-900 mb-2">Featured Articles</h2>
-          <p class="text-earth-700">Dive into our most thought-provoking explorations of classical wisdom</p>
-        </div>
-        <a href="/blog" class="hidden md:inline-flex items-center text-olive-700 hover:text-olive-800 font-medium">
-          View all articles
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-1" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd" />
-          </svg>
-        </a>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {highlightedPosts.map(post => (
-          <article class="card h-full flex flex-col">
-            {post.data.heroImage && (
-              <div class="aspect-video overflow-hidden">
-                <img 
-                  src={post.data.heroImage} 
-                  alt={post.data.title} 
-                  class="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-                />
-              </div>
-            )}
-            <div class="p-6 flex-grow flex flex-col">
-              {post.data.category && (
-                <a href={`/categories/${post.data.category}`} class="inline-block px-3 py-1 mb-3 text-xs font-medium rounded-full bg-olive-100 text-olive-700 hover:bg-olive-200 transition-colors">
-                  {post.data.category.charAt(0).toUpperCase() + post.data.category.slice(1)}
-                </a>
-              )}
-              <h3 class="text-xl font-bold text-earth-900 mb-2 hover:text-olive-600 transition-colors duration-200">
-                <a href={`/blog/${post.id.split('/').pop()?.replace(/\.mdx?$/, '')}/`}>{post.data.title}</a>
-              </h3>
-              <p class="text-earth-700 mb-4 flex-grow">{post.data.description}</p>
-              <div class="flex justify-between items-center text-sm text-earth-600">
-                <span class="inline-flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <FormattedDate date={post.data.pubDate} />
-                </span>
-                {post.data.author && (
-                  <span>{post.data.author}</span>
-                )}
-              </div>
-            </div>
-          </article>
-        ))}
-      </div>
-
-      <div class="text-center mt-8 md:hidden">
-        <a href="/blog" class="btn-secondary">View all articles</a>
-      </div>
-    </div>
-  </section>
-
-  <!-- Categories Section -->
-  <section class="py-16 bg-white">
-    <div class="max-w-6xl mx-auto px-4">
-      <div class="text-center mb-12">
-        <h2 class="text-3xl font-bold text-earth-900 mb-4">Explore by Category</h2>
-        <p class="text-earth-700 max-w-3xl mx-auto">Delve into specific areas of classical studies and philosophy through our curated categories</p>
-      </div>
-
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {CATEGORIES.slice(0, 6).map(category => (
-          <a href={`/categories/${category.slug}`} class="group block p-6 border border-earth-100 rounded-lg hover:border-olive-300 hover:bg-olive-50 transition-all duration-200">
-            <h3 class="text-xl font-bold text-earth-900 mb-2 group-hover:text-olive-700 transition-colors duration-200">
-              {category.name}
-            </h3>
-            <p class="text-earth-700 line-clamp-2">{category.description}</p>
+  <div class="container mx-auto">
+    <section class="py-16 bg-olive-50">
+      <div class="max-w-6xl mx-auto px-4">
+        <div class="flex justify-between items-end mb-8">
+          <div>
+            <h2 class="text-3xl font-bold text-earth-900 mb-2">Featured Articles</h2>
+            <p class="text-earth-700">Dive into our most thought-provoking explorations of classical wisdom</p>
+          </div>
+          <a href="/blog" class="hidden md:inline-flex items-center text-olive-700 hover:text-olive-800 font-medium">
+            View all articles
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-1" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
           </a>
-        ))}
-      </div>
-
-      <div class="text-center mt-10">
-        <a href="/categories" class="btn-secondary">View all categories</a>
-      </div>
-    </div>
-  </section>
-
-  <!-- Courses Section
-  <section class="py-16 bg-sage-50">
-    <div class="max-w-6xl mx-auto px-4">
-      <div class="flex flex-col md:flex-row md:justify-between md:items-end mb-12">
-        <div>
-          <h2 class="text-3xl font-bold text-earth-900 mb-2">Educational Courses</h2>
-          <p class="text-earth-700 max-w-2xl">Structured learning experiences to deepen your understanding of classical wisdom</p>
         </div>
-        <a href="/courses" class="hidden md:inline-flex items-center text-olive-700 hover:text-olive-800 font-medium mt-4 md:mt-0">
-          Browse all courses
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-1" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd" />
-          </svg>
-        </a>
-      </div>
 
-      {courses.length > 0 ? (
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {courses.map((course: any) => (
-            <div class="card overflow-hidden bg-white">
-              <div class="aspect-video relative overflow-hidden">
-                {course.data.heroImage ? (
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {featuredArticles.map(post => (
+            <article class="card h-full flex flex-col">
+              {post.data.heroImage && (
+                <div class="aspect-video overflow-hidden">
                   <img 
-                    src={course.data.heroImage} 
-                    alt={course.data.title} 
+                    src={post.data.heroImage} 
+                    alt={post.data.title} 
                     class="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
                   />
-                ) : (
-                  <div class="w-full h-full flex items-center justify-center bg-earth-100">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-earth-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </div>
+              )}
+              <div class="p-6 flex-grow flex flex-col">
+                {post.data.category && (
+                  <a href={`/categories/${post.data.category}`} class="inline-block px-3 py-1 mb-3 text-xs font-medium rounded-full bg-olive-100 text-olive-700 hover:bg-olive-200 transition-colors">
+                    {post.data.category.charAt(0).toUpperCase() + post.data.category.slice(1)}
+                  </a>
+                )}
+                <h3 class="text-xl font-bold text-earth-900 mb-2 hover:text-olive-600 transition-colors duration-200">
+                  <a href={`/blog/${post.id.split('/').pop()?.replace(/\.mdx?$/, '')}/`}>{post.data.title}</a>
+                </h3>
+                <p class="text-earth-700 mb-4 flex-grow">{post.data.description}</p>
+                <div class="flex justify-between items-center text-sm text-earth-600">
+                  <span class="inline-flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
-                  </div>
-                )}
-                
-                {course.data.level && (
-                  <div class="absolute top-3 right-3">
-                    <span class={`inline-block px-3 py-1 text-sm font-medium rounded-full
-                      ${course.data.level === 'beginner' ? 'bg-sage-100 text-sage-700' : 
-                        course.data.level === 'intermediate' ? 'bg-olive-100 text-olive-700' : 
-                        'bg-earth-200 text-earth-800'}`}>
-                      {course.data.level.charAt(0).toUpperCase() + course.data.level.slice(1)}
-                    </span>
-                  </div>
-                )}
-              </div>
-              <div class="p-6">
-                <div class="flex justify-between items-start mb-3">
-                  <h3 class="text-2xl font-bold text-earth-900">{course.data.title}</h3>
-                  {course.data.price && (
-                    <span class="text-olive-700 font-semibold">{course.data.price}</span>
+                    <FormattedDate date={post.data.pubDate} />
+                  </span>
+                  {post.data.author && (
+                    <span>{post.data.author}</span>
                   )}
                 </div>
-                <p class="text-earth-700 mb-4">{course.data.description}</p>
-                {course.data.duration && (
-                  <div class="mb-4">
-                    <span class="inline-flex items-center text-sm text-earth-600">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      {course.data.duration}
-                    </span>
-                  </div>
-                )}
-                <a href={`/courses/${course.slug}`} class="btn-primary inline-block">View Course</a>
               </div>
-            </div>
+            </article>
           ))}
         </div>
-      ) : (
-        <div class="text-center py-12 border border-dashed border-earth-200 rounded-lg bg-white">
-          <div class="text-earth-500 mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-            </svg>
-          </div>
-          <h3 class="text-2xl font-bold text-earth-800 mb-2">Courses Coming Soon</h3>
-          <p class="text-earth-600 mb-6 max-w-lg mx-auto">We're currently developing thoughtful and immersive courses on classical studies and philosophy.</p>
-          <a href="/courses" class="btn-primary">Learn More</a>
-        </div>
-      )}
 
-      <div class="text-center mt-10 md:hidden">
-        <a href="/courses" class="btn-secondary">Browse all courses</a>
+        <div class="text-center mt-8 md:hidden">
+          <a href="/blog" class="btn-secondary">View all articles</a>
+        </div>
       </div>
-    </div>
-  </section> -->
+    </section>
+  </div>
+
+  <!-- Categories Section -->
+  <div class="container mx-auto">
+    <section class="py-16 bg-white">
+      <div class="max-w-6xl mx-auto px-4">
+        <div class="text-center mb-12">
+          <h2 class="text-3xl font-bold text-earth-900 mb-4">Explore by Category</h2>
+          <p class="text-earth-700 max-w-3xl mx-auto">Delve into specific areas of classical studies and philosophy through our curated categories</p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {CATEGORIES.slice(0, 6).map(category => (
+            <a href={`/categories/${category.slug}`} class="group block p-6 border border-earth-100 rounded-lg hover:border-olive-300 hover:bg-olive-50 transition-all duration-200">
+              <h3 class="text-xl font-bold text-earth-900 mb-2 group-hover:text-olive-700 transition-colors duration-200">
+                {category.name}
+              </h3>
+              <p class="text-earth-700 line-clamp-2">{category.description}</p>
+            </a>
+          ))}
+        </div>
+
+        <div class="text-center mt-10">
+          <a href="/categories" class="btn-secondary">View all categories</a>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Courses Section
+  <div class="container mx-auto">
+    <section class="py-16 bg-sage-50">
+      <div class="max-w-6xl mx-auto px-4">
+{{ ... }}
+      </div>
+    </section>
+  </div>
+  -->
 
   <!-- Newsletter Section -->
-  <!-- <section class="py-16 bg-earth-100">
-    <div class="max-w-3xl mx-auto px-4 text-center">
-      <h2 class="text-3xl font-bold text-earth-900 mb-4">Join Our Philosophical Journey</h2>
-      <p class="text-earth-700 mb-8">Subscribe to receive the latest articles, course announcements, and classical wisdom directly to your inbox.</p>
+  <!-- 
+  <div class="container mx-auto">
+    <section class="py-16 bg-earth-100">
+      <div class="max-w-3xl mx-auto px-4 text-center">
+{{ ... }}
+      </div>
+    </section>
+  </div>
+  -->
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Hero carousel functionality
+    const slides = document.querySelectorAll('.carousel-slide');
+    const dots = document.querySelectorAll('.carousel-dot');
+    
+    if (slides.length > 0) {
+      let currentSlide = 0;
       
-      <form class="max-w-md mx-auto">
-        <div class="flex flex-col sm:flex-row gap-3">
-          <input 
-            type="email" 
-            class="flex-grow px-4 py-3 rounded-md border border-earth-300 focus:outline-none focus:ring-2 focus:ring-olive-500" 
-            placeholder="Your email address"
-            required
-          />
-          <button type="submit" class="btn-primary whitespace-nowrap py-3">Subscribe</button>
-        </div>
-        <p class="text-sm text-earth-600 mt-3">We respect your privacy. Unsubscribe at any time.</p>
-      </form>
-    </div>
-  </section> -->
+      // Show initial slide
+      showSlide(currentSlide);
+      
+      // Auto advance slides every 5 seconds
+      const autoSlide = setInterval(() => {
+        currentSlide = (currentSlide + 1) % slides.length;
+        showSlide(currentSlide);
+      }, 5000);
+      
+      // Click handlers for dots
+      dots.forEach((dot, index) => {
+        dot.addEventListener('click', () => {
+          clearInterval(autoSlide);
+          currentSlide = index;
+          showSlide(currentSlide);
+        });
+      });
+      
+      // Function to show a specific slide
+      function showSlide(index: number) {
+        // Update slide positions
+        const slidesElement = document.querySelector('.carousel-slides');
+        if (slidesElement) {
+          slidesElement.style.transform = `translateX(-${index * 100}%)`;
+        }
+        
+        // Update active dot
+        dots.forEach((dot, i) => {
+          if (i === index) {
+            dot.classList.add('bg-olive-500');
+            dot.classList.remove('bg-earth-400');
+          } else {
+            dot.classList.remove('bg-olive-500');
+            dot.classList.add('bg-earth-400');
+          }
+        });
+      }
+    }
+  });
+</script>
 </BaseLayout>
