@@ -6,9 +6,21 @@ import { SITE_TITLE, SITE_DESCRIPTION } from '../../consts';
 import { getCollection } from 'astro:content';
 import FormattedDate from '../../components/FormattedDate.astro';
 
-const posts = (await getCollection('blog')).sort(
-	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
+const allPosts = (await getCollection('blog')).sort(
+	(a, b) => new Date(b.data.pubDate).valueOf() - new Date(a.data.pubDate).valueOf(),
 );
+
+// Get the latest post
+const latestPost = allPosts[0];
+// Get remaining posts
+const olderPosts = allPosts.slice(1);
+
+// Get all unique categories
+const categories = [...new Set(allPosts.flatMap(post => [post.data.category].filter(Boolean)))];
+
+// Get current category from URL
+const url = new URL(Astro.request.url);
+const currentCategory = url.searchParams.get('category') || 'all';
 ---
 
 <!doctype html>
@@ -16,71 +28,175 @@ const posts = (await getCollection('blog')).sort(
 	<head>
 		<BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
 		<style>
-			main {
-				width: 960px;
+			:root {
+				--spacing: 1.5rem;
+				--border-radius: 12px;
+				--transition: all 0.3s ease;
 			}
-			ul {
+
+			main {
+				max-width: 1200px;
+				margin: 0 auto;
+				padding: 0 var(--spacing);
+			}
+
+			/* Category Filter */
+			.category-filter {
 				display: flex;
 				flex-wrap: wrap;
-				gap: 2rem;
-				list-style-type: none;
-				margin: 0;
-				padding: 0;
+				gap: 0.5rem;
+				margin-bottom: 2rem;
 			}
-			ul li {
-				width: calc(50% - 1rem);
+
+			.category-btn {
+				background: none;
+				border: 1px solid rgb(var(--gray-light));
+				border-radius: 20px;
+				padding: 0.5rem 1rem;
+				cursor: pointer;
+				transition: var(--transition);
+				font-size: 0.9rem;
 			}
-			ul li * {
+
+			.category-btn:hover,
+			.category-btn.active {
+				background-color: rgb(var(--accent));
+				color: white;
+				border-color: rgb(var(--accent));
+			}
+
+			/* Featured Post */
+			.featured-post {
+				margin-bottom: 3rem;
+				overflow: hidden;
+				border-radius: var(--border-radius);
+				box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+				transition: var(--transition);
+			}
+
+			.featured-post:hover {
+				transform: translateY(-5px);
+				box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+			}
+
+			.featured-link {
 				text-decoration: none;
-				transition: 0.2s ease;
-			}
-			ul li:first-child {
-				width: 100%;
-				margin-bottom: 1rem;
-				text-align: center;
-			}
-			ul li:first-child img {
-				width: 100%;
-			}
-			ul li:first-child .title {
-				font-size: 2.369rem;
-			}
-			ul li img {
-				margin-bottom: 0.5rem;
-				border-radius: 12px;
-			}
-			ul li a {
 				display: block;
 			}
-			.title {
-				margin: 0;
+
+			.featured-image {
+				width: 100%;
+				height: 400px;
+				object-fit: cover;
+			}
+
+			.featured-content {
+				padding: 2rem;
+				background: white;
+			}
+
+			.featured-title {
+				font-size: 2.2rem;
+				margin: 1rem 0;
 				color: rgb(var(--black));
-				line-height: 1;
 			}
-			.date {
-				margin: 0;
+
+			.featured-excerpt {
 				color: rgb(var(--gray));
+				font-size: 1.1rem;
+				line-height: 1.6;
+				margin-bottom: 1rem;
 			}
-			ul li a:hover h4,
-			ul li a:hover .date {
+
+			.featured-date {
+				color: rgb(var(--gray));
+				font-size: 0.9rem;
+			}
+
+			/* Posts Grid */
+			.posts-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+				gap: 2rem;
+				margin-top: 2rem;
+			}
+
+			.post-card {
+				background: white;
+				border-radius: var(--border-radius);
+				overflow: hidden;
+				transition: var(--transition);
+				box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+			}
+
+			.post-card:hover {
+				transform: translateY(-5px);
+				box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+			}
+
+			.post-link {
+				text-decoration: none;
+				display: block;
+				height: 100%;
+			}
+
+			.post-image {
+				width: 100%;
+				height: 200px;
+				object-fit: cover;
+			}
+
+			.post-content {
+				padding: 1.5rem;
+			}
+
+			.post-title {
+				font-size: 1.3rem;
+				margin: 0.5rem 0;
+				color: rgb(var(--black));
+			}
+
+			.post-excerpt {
+				color: rgb(var(--gray));
+				font-size: 0.95rem;
+				line-height: 1.5;
+				margin-bottom: 1rem;
+			}
+
+			.post-date {
+				color: rgb(var(--gray));
+				font-size: 0.85rem;
+			}
+
+			/* Category Tags */
+			.categories {
+				display: flex;
+				gap: 0.5rem;
+				margin-bottom: 0.5rem;
+			}
+
+			.category-tag {
+				display: inline-block;
+				background: rgba(var(--accent), 0.1);
 				color: rgb(var(--accent));
+				border-radius: 4px;
+				padding: 0.25rem 0.5rem;
+				font-size: 0.75rem;
+				font-weight: 500;
 			}
-			ul a:hover img {
-				box-shadow: var(--box-shadow);
-			}
-			@media (max-width: 720px) {
-				ul {
-					gap: 0.5em;
+
+			/* Responsive */
+			@media (max-width: 768px) {
+				.featured-title {
+					font-size: 1.75rem;
 				}
-				ul li {
-					width: 100%;
-					text-align: center;
+
+				.featured-image {
+					height: 300px;
 				}
-				ul li:first-child {
-					margin-bottom: 0;
-				}
-				ul li:first-child .title {
-					font-size: 1.563em;
+
+				.posts-grid {
+					grid-template-columns: 1fr;
 				}
 			}
 		</style>
@@ -89,21 +205,78 @@ const posts = (await getCollection('blog')).sort(
 		<Header />
 		<main>
 			<section>
-				<ul>
-					{
-						posts.map((post) => (
-							<li>
-								<a href={`/blog/${post.id.split('/').pop()?.replace(/\.mdx?$/, '')}/`}>
-									<img width={720} height={360} src={post.data.heroImage} alt="" />
-									<h4 class="title">{post.data.title}</h4>
-									<p class="date">
-										<FormattedDate date={post.data.pubDate} />
-									</p>
+				{/* Category Filter */}
+				<div class="category-filter">
+					<a href="?category=all" class={`category-btn ${currentCategory === 'all' ? 'active' : ''}`}>
+						Todos
+					</a>
+					{categories.map(category => (
+						<a 
+							href={`?category=${encodeURIComponent(category)}`} 
+							class={`category-btn ${currentCategory === category ? 'active' : ''}`}
+						>
+							{category}
+						</a>
+					))}
+				</div>
+
+				{/* Featured Post */}
+				{latestPost && (
+					<div class="featured-post">
+						<a href={`/blog/${latestPost.slug}/`} class="featured-link">
+							<img 
+								src={latestPost.data.heroImage} 
+								alt={latestPost.data.title}
+								class="featured-image"
+							/>
+							<div class="featured-content">
+								{latestPost.data.category && (
+									<div class="categories">
+										<span class="category-tag">{latestPost.data.category}</span>
+									</div>
+								)}
+								<h2 class="featured-title">{latestPost.data.title}</h2>
+								<p class="featured-excerpt">{latestPost.data.description}</p>
+								<p class="featured-date">
+									<FormattedDate date={latestPost.data.pubDate} />
+								</p>
+							</div>
+						</a>
+					</div>
+				)}
+
+				{/* Posts Grid */}
+				<div class="posts-grid">
+					{olderPosts
+						.filter(post => 
+							currentCategory === 'all' || 
+							post.data.category === currentCategory
+						)
+						.map((post) => (
+							<article class="post-card">
+								<a href={`/blog/${post.slug}/`} class="post-link">
+									<img 
+										src={post.data.heroImage} 
+										alt={post.data.title}
+										class="post-image"
+									/>
+									<div class="post-content">
+										{post.data.category && (
+											<div class="categories">
+												<span class="category-tag">{post.data.category}</span>
+											</div>
+										)}
+										<h3 class="post-title">{post.data.title}</h3>
+										<p class="post-excerpt">{post.data.description}</p>
+										<p class="post-date">
+											<FormattedDate date={post.data.pubDate} />
+										</p>
+									</div>
 								</a>
-							</li>
+							</article>
 						))
 					}
-				</ul>
+				</div>
 			</section>
 		</main>
 		<Footer />
