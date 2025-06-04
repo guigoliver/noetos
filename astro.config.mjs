@@ -10,7 +10,6 @@ export default defineConfig({
   site: 'https://example.com',
   output: 'static',
   integrations: [
-    github(),
     mdx(), 
     sitemap(), 
     react(),
